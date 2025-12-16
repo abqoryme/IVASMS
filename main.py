@@ -6,6 +6,7 @@ Includes Flask web dashboard for monitoring and control
 """
 
 import os
+import sys
 import json
 import asyncio
 import logging
@@ -13,20 +14,20 @@ import re
 import requests
 import threading
 import time
+import hashlib
 from datetime import datetime, timedelta
+from functools import wraps
 from bs4 import BeautifulSoup
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import func
 from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
-from telegram import Bot
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 
-# Load environment variables
 load_dotenv()
 
-# Configure logging with debug support
 log_level = logging.DEBUG if os.environ.get('DEBUG') == '1' else logging.INFO
 logging.basicConfig(
     level=log_level,
@@ -38,21 +39,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ================================
-# FLASK APP SETUP
-# ================================
+SIGNATURE = "𝐌ʀ 𝐀ғʀɪx 𝐓ᴇᴄʜ™"
+BANNER_IMAGE_URL = "https://files.catbox.moe/3fr0yx.jpg"
+CHANNEL_LINK = "https://t.me/mrafrix"
+OTP_GROUP_LINK = "https://t.me/+_76TZqOFTeBkMWFk"
+OWNER_LINK = "https://t.me/jadenafrix"
+
+DASHBOARD_EMAIL = "tawandamahachi07@gmail.com"
+DASHBOARD_PASSWORD = "mahachi2007"
 
 class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
 
-# Create Flask app
-app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "telegram-otp-bot-secret-key")
+app = Flask(__name__, template_folder='Templates')
+app.secret_key = os.environ.get("SESSION_SECRET", "telegram-otp-bot-secret-key-mr-afrix-tech")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Database configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///bot.db")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
@@ -60,12 +64,7 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 }
 db.init_app(app)
 
-# ================================
-# DATABASE MODELS
-# ================================
-
 class OTPLog(db.Model):
-    """Model to store OTP processing logs for statistics and tracking"""
     id = db.Column(db.Integer, primary_key=True)
     otp_code = db.Column(db.String(20), nullable=False)
     phone_number = db.Column(db.String(20), nullable=True)
@@ -78,7 +77,6 @@ class OTPLog(db.Model):
         return f'<OTPLog {self.id}: {self.otp_code} - {self.service_name}>'
 
 class BotStats(db.Model):
-    """Model to store bot statistics and status"""
     id = db.Column(db.Integer, primary_key=True)
     stat_name = db.Column(db.String(50), unique=True, nullable=False)
     stat_value = db.Column(db.String(255), nullable=True)
@@ -87,12 +85,19 @@ class BotStats(db.Model):
     def __repr__(self):
         return f'<BotStats {self.stat_name}: {self.stat_value}>'
 
-# ================================
-# UTILITY FUNCTIONS
-# ================================
+def get_inline_keyboard():
+    keyboard = [
+        [
+            InlineKeyboardButton("📱 NUMBER CHANNEL", url=CHANNEL_LINK),
+            InlineKeyboardButton("🔐 OTP GROUP", url=OTP_GROUP_LINK),
+        ],
+        [
+            InlineKeyboardButton("👤 OWNER", url=OWNER_LINK),
+        ]
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
 def format_otp_message(otp_data):
-    """Format OTP data for Telegram with touch-to-copy functionality"""
     otp = otp_data.get('otp', 'N/A')
     phone = otp_data.get('phone', 'N/A')
     service = otp_data.get('service', 'Unknown')
@@ -105,12 +110,14 @@ def format_otp_message(otp_data):
 🌐 Service: <b>{service}</b>
 ⏰ Time: {timestamp}
 
-<i>Tap the OTP to copy it!</i>"""
+<i>Tap the OTP to copy it!</i>
+
+━━━━━━━━━━━━━━━━━━━━
+<b>{SIGNATURE}</b>"""
     
     return message
 
 def format_multiple_otps(otp_list):
-    """Format multiple OTPs into a single message"""
     if not otp_list:
         return "No new OTPs found."
     
@@ -128,23 +135,22 @@ def format_multiple_otps(otp_list):
         msg = f"<b>{i}.</b> <code>{otp}</code> | {service} | <code>{phone}</code>"
         messages.append(msg)
     
-    footer = "\n\n<i>Tap any OTP to copy it!</i>"
+    footer = f"\n\n<i>Tap any OTP to copy it!</i>\n\n━━━━━━━━━━━━━━━━━━━━\n<b>{SIGNATURE}</b>"
     
     return header + "\n".join(messages) + footer
 
 def extract_otp_from_text(text):
-    """Extract OTP code from SMS text using various patterns"""
     if not text:
         return None
     
     patterns = [
-        r'\b(\d{6})\b',  # 6-digit codes
-        r'\b(\d{5})\b',  # 5-digit codes
-        r'\b(\d{4})\b',  # 4-digit codes
-        r'code[:\s]*(\d+)',  # "code: 123456"
-        r'verification[:\s]*(\d+)',  # "verification: 123456"
-        r'otp[:\s]*(\d+)',  # "otp: 123456"
-        r'pin[:\s]*(\d+)',  # "pin: 123456"
+        r'\b(\d{6})\b',
+        r'\b(\d{5})\b',
+        r'\b(\d{4})\b',
+        r'code[:\s]*(\d+)',
+        r'verification[:\s]*(\d+)',
+        r'otp[:\s]*(\d+)',
+        r'pin[:\s]*(\d+)',
     ]
     
     for pattern in patterns:
@@ -155,14 +161,13 @@ def extract_otp_from_text(text):
     return None
 
 def clean_phone_number(phone):
-    """Clean and format phone number"""
     if not phone:
         return "N/A"
     
     cleaned = re.sub(r'[^\d+]', '', phone)
     
     if cleaned and not cleaned.startswith('+'):
-        if cleaned.startswith('88'):  # Bangladesh numbers
+        if cleaned.startswith('88'):
             cleaned = '+' + cleaned
         elif len(cleaned) >= 10:
             cleaned = '+' + cleaned
@@ -170,7 +175,6 @@ def clean_phone_number(phone):
     return cleaned or phone
 
 def clean_service_name(service):
-    """Clean and format service name"""
     if not service:
         return "Unknown"
     
@@ -197,7 +201,6 @@ def clean_service_name(service):
     return cleaned
 
 def get_status_message(stats):
-    """Generate status message for bot health check"""
     uptime = stats.get('uptime', 'Unknown')
     total_otps = stats.get('total_otps_sent', 0)
     last_check = stats.get('last_check', 'Never')
@@ -211,22 +214,18 @@ def get_status_message(stats):
 🔍 Last Check: {last_check}
 💾 Cache Size: {cache_size} items
 
-<i>Bot is running and monitoring for new OTPs</i>"""
+<i>Bot is running and monitoring for new OTPs</i>
 
-# ================================
-# OTP FILTER CLASS
-# ================================
+━━━━━━━━━━━━━━━━━━━━
+<b>{SIGNATURE}</b>"""
 
 class OTPFilter:
-    """Manages OTP filtering to prevent duplicates"""
-    
     def __init__(self, cache_file='otp_cache.json', expire_minutes=30):
         self.cache_file = cache_file
         self.expire_minutes = expire_minutes
         self.cache = self._load_cache()
     
     def _load_cache(self):
-        """Load existing cache from file"""
         if os.path.exists(self.cache_file):
             try:
                 with open(self.cache_file, 'r') as f:
@@ -236,7 +235,6 @@ class OTPFilter:
         return {}
     
     def _save_cache(self):
-        """Save cache to file"""
         try:
             with open(self.cache_file, 'w') as f:
                 json.dump(self.cache, f, indent=2)
@@ -244,7 +242,6 @@ class OTPFilter:
             logger.error(f"Error saving cache: {e}")
     
     def _cleanup_expired(self):
-        """Remove expired entries from cache"""
         current_time = datetime.now()
         expired_keys = []
         
@@ -260,20 +257,17 @@ class OTPFilter:
             del self.cache[key]
     
     def _generate_key(self, otp_data):
-        """Generate unique key for OTP entry"""
         otp = otp_data.get('otp', '')
         phone = otp_data.get('phone', '')
         service = otp_data.get('service', '')
         return f"{otp}_{phone}_{service}"
     
     def is_duplicate(self, otp_data):
-        """Check if OTP has been processed recently"""
         self._cleanup_expired()
         key = self._generate_key(otp_data)
         return key in self.cache
     
     def add_otp(self, otp_data):
-        """Add OTP to cache to mark as processed"""
         key = self._generate_key(otp_data)
         self.cache[key] = {
             'timestamp': datetime.now().isoformat(),
@@ -284,7 +278,6 @@ class OTPFilter:
         self._save_cache()
     
     def filter_new_otps(self, otp_list):
-        """Filter out duplicate OTPs from a list"""
         new_otps = []
         
         for otp_data in otp_list:
@@ -295,7 +288,6 @@ class OTPFilter:
         return new_otps
     
     def get_cache_stats(self):
-        """Get statistics about cached OTPs"""
         self._cleanup_expired()
         return {
             'total_cached': len(self.cache),
@@ -304,14 +296,9 @@ class OTPFilter:
         }
     
     def clear_cache(self):
-        """Clear all cached OTPs"""
         self.cache = {}
         self._save_cache()
         return "Cache cleared successfully"
-
-# ================================
-# IVASMS SCRAPER CLASS
-# ================================
 
 class IVASMSScraper:
     def __init__(self, email, password):
@@ -322,25 +309,33 @@ class IVASMSScraper:
         self.is_logged_in = False
 
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-User': '?1',
         })
 
     def login(self):
         try:
+            logger.info("Attempting to login to IVASMS...")
             login_url = f"{self.base_url}/login"
-            response = self.session.get(login_url)
+            response = self.session.get(login_url, timeout=30)
             if response.status_code != 200:
-                logger.error("Login page unreachable.")
+                logger.error(f"Login page unreachable. Status: {response.status_code}")
                 return False
 
             soup = BeautifulSoup(response.content, 'html.parser')
             csrf_input = soup.find('input', {'name': '_token'})
             csrf_token = csrf_input.get('value', '') if csrf_input else ''
+            
+            if not csrf_token:
+                logger.warning("CSRF token not found, attempting login without it")
 
             login_data = {
                 'email': self.email,
@@ -348,32 +343,72 @@ class IVASMSScraper:
                 '_token': csrf_token
             }
 
-            login_response = self.session.post(login_url, data=login_data)
-            if login_response.status_code == 200 and "logout" in login_response.text.lower():
+            self.session.headers.update({
+                'Referer': login_url,
+                'Origin': self.base_url,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            })
+
+            login_response = self.session.post(login_url, data=login_data, timeout=30, allow_redirects=True)
+            
+            if login_response.status_code == 200:
+                response_text = login_response.text.lower()
+                if "logout" in response_text or "dashboard" in response_text or "my_sms" in response_text:
+                    self.is_logged_in = True
+                    logger.info("✅ Login successful to IVASMS")
+                    return True
+                elif "invalid" in response_text or "incorrect" in response_text:
+                    logger.error("❌ Login failed - Invalid credentials")
+                    return False
+
+            if login_response.status_code in [301, 302, 303]:
                 self.is_logged_in = True
-                logger.info("✅ Login successful")
+                logger.info("✅ Login successful (redirect detected)")
                 return True
 
-            logger.error("❌ Login failed")
+            logger.error(f"❌ Login failed with status: {login_response.status_code}")
+            return False
+        except requests.exceptions.Timeout:
+            logger.error("Login timeout - IVASMS server not responding")
+            return False
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Login error: {e}")
             return False
         except Exception as e:
-            logger.error(f"Login error: {e}")
+            logger.error(f"Unexpected login error: {e}")
             return False
 
     def fetch_messages(self):
         if not self.is_logged_in:
+            logger.info("Not logged in, attempting login...")
             if not self.login():
+                logger.error("Failed to login, cannot fetch messages")
                 return []
 
         try:
             url = f"{self.base_url}/portal/live/my_sms"
-            response = self.session.get(url)
+            logger.debug(f"Fetching messages from: {url}")
+            response = self.session.get(url, timeout=30)
+            
             if response.status_code != 200:
-                logger.error("Failed to load SMS page.")
+                logger.error(f"Failed to load SMS page. Status: {response.status_code}")
+                self.is_logged_in = False
+                return []
+
+            if "login" in response.url.lower() and "my_sms" not in response.url.lower():
+                logger.warning("Session expired, re-logging in...")
+                self.is_logged_in = False
+                if self.login():
+                    return self.fetch_messages()
                 return []
 
             soup = BeautifulSoup(response.content, 'html.parser')
-            return self._extract_messages(soup)
+            messages = self._extract_messages(soup)
+            logger.info(f"Fetched {len(messages)} messages from IVASMS")
+            return messages
+        except requests.exceptions.Timeout:
+            logger.error("Timeout fetching messages")
+            return []
         except Exception as e:
             logger.error(f"Error fetching messages: {e}")
             return []
@@ -381,32 +416,50 @@ class IVASMSScraper:
     def _extract_messages(self, soup):
         messages = []
 
-        # Try different table structures
-        rows = soup.find_all('tr')
-        for row in rows[1:]:  # Skip header row
-            cells = row.find_all('td')
-            if len(cells) < 3:
-                continue
+        tables = soup.find_all('table')
+        for table in tables:
+            rows = table.find_all('tr')
+            for row in rows[1:]:
+                cells = row.find_all('td')
+                if len(cells) < 3:
+                    continue
 
-            phone = clean_phone_number(cells[0].text)
-            service = clean_service_name(cells[1].text)
-            raw_text = cells[2].text.strip()
-            otp = extract_otp_from_text(raw_text)
+                phone = clean_phone_number(cells[0].text)
+                service = clean_service_name(cells[1].text)
+                raw_text = cells[2].text.strip()
+                otp = extract_otp_from_text(raw_text)
 
-            if otp:
-                messages.append({
-                    'otp': otp,
-                    'phone': phone or "N/A",
-                    'service': service or "Unknown",
-                    'timestamp': datetime.now().strftime('%H:%M:%S'),
-                    'raw_message': raw_text
-                })
+                if otp:
+                    messages.append({
+                        'otp': otp,
+                        'phone': phone or "N/A",
+                        'service': service or "Unknown",
+                        'timestamp': datetime.now().strftime('%H:%M:%S'),
+                        'raw_message': raw_text
+                    })
+
+        if not messages:
+            rows = soup.find_all('tr')
+            for row in rows[1:]:
+                cells = row.find_all('td')
+                if len(cells) < 3:
+                    continue
+
+                phone = clean_phone_number(cells[0].text)
+                service = clean_service_name(cells[1].text)
+                raw_text = cells[2].text.strip()
+                otp = extract_otp_from_text(raw_text)
+
+                if otp:
+                    messages.append({
+                        'otp': otp,
+                        'phone': phone or "N/A",
+                        'service': service or "Unknown",
+                        'timestamp': datetime.now().strftime('%H:%M:%S'),
+                        'raw_message': raw_text
+                    })
 
         return messages
-
-# ================================
-# TELEGRAM BOT CLASS
-# ================================
 
 class TelegramOTPBot:
     def __init__(self, token, group_id):
@@ -415,39 +468,62 @@ class TelegramOTPBot:
         self.bot = Bot(token=token)
         self.start_time = datetime.now()
 
-
     async def send_otp_message(self, otp_data):
-        """Send OTP message to Telegram group"""
+        message = format_otp_message(otp_data)
+        keyboard = get_inline_keyboard()
+        
         try:
-            message = format_otp_message(otp_data)
-            await self.bot.send_message(
+            await self.bot.send_photo(
                 chat_id=self.group_id,
-                text=message,
-                parse_mode='HTML'
+                photo=BANNER_IMAGE_URL,
+                caption=message,
+                parse_mode='HTML',
+                reply_markup=keyboard
             )
             return True
         except Exception as e:
-            logger.error(f"Error sending OTP message: {e}")
-            return False
+            logger.error(f"Error sending OTP message with photo: {e}")
+            try:
+                await self.bot.send_message(
+                    chat_id=self.group_id,
+                    text=message,
+                    parse_mode='HTML',
+                    reply_markup=keyboard
+                )
+                return True
+            except Exception as e2:
+                logger.error(f"Fallback message also failed: {e2}")
+                return False
 
     async def send_multiple_otps(self, otp_list):
-        """Send multiple OTPs in a single message"""
+        message = format_multiple_otps(otp_list)
+        keyboard = get_inline_keyboard()
+        
         try:
-            message = format_multiple_otps(otp_list)
-            await self.bot.send_message(
+            await self.bot.send_photo(
                 chat_id=self.group_id,
-                text=message,
-                parse_mode='HTML'
+                photo=BANNER_IMAGE_URL,
+                caption=message,
+                parse_mode='HTML',
+                reply_markup=keyboard
             )
             return True
         except Exception as e:
-            logger.error(f"Error sending multiple OTPs: {e}")
-            return False
+            logger.error(f"Error sending multiple OTPs with photo: {e}")
+            try:
+                await self.bot.send_message(
+                    chat_id=self.group_id,
+                    text=message,
+                    parse_mode='HTML',
+                    reply_markup=keyboard
+                )
+                return True
+            except Exception as e2:
+                logger.error(f"Fallback message also failed: {e2}")
+                return False
 
     async def send_test_message(self):
-        """Send a test message to verify bot functionality"""
-        try:
-            test_message = """🧪 <b>Test Message</b>
+        test_message = f"""🧪 <b>Test Message</b>
 
 This is a test message to verify that the Telegram OTP Bot is working correctly.
 
@@ -455,21 +531,35 @@ This is a test message to verify that the Telegram OTP Bot is working correctly.
 ✅ Message formatting is working
 ✅ Connection to Telegram is established
 
-<i>Test completed successfully!</i>"""
-            
-            await self.bot.send_message(
+<i>Test completed successfully!</i>
+
+━━━━━━━━━━━━━━━━━━━━
+<b>{SIGNATURE}</b>"""
+        
+        keyboard = get_inline_keyboard()
+        
+        try:
+            await self.bot.send_photo(
                 chat_id=self.group_id,
-                text=test_message,
-                parse_mode='HTML'
+                photo=BANNER_IMAGE_URL,
+                caption=test_message,
+                parse_mode='HTML',
+                reply_markup=keyboard
             )
             return True
         except Exception as e:
-            logger.error(f"Error sending test message: {e}")
-            return False
-
-# ================================
-# MAIN BOT CONTROLLER
-# ================================
+            logger.error(f"Error sending test message with photo: {e}")
+            try:
+                await self.bot.send_message(
+                    chat_id=self.group_id,
+                    text=test_message,
+                    parse_mode='HTML',
+                    reply_markup=keyboard
+                )
+                return True
+            except Exception as e2:
+                logger.error(f"Fallback test message also failed: {e2}")
+                return False
 
 class OTPBotController:
     def __init__(self):
@@ -480,12 +570,10 @@ class OTPBotController:
         self.monitor_thread = None
         self.start_time = datetime.now()
         
-        # Initialize components
         self._init_scraper()
         self._init_telegram_bot()
 
     def _init_scraper(self):
-        """Initialize IVASMS scraper with error handling"""
         try:
             email = os.environ.get("IVASMS_EMAIL")
             password = os.environ.get("IVASMS_PASSWORD")
@@ -503,7 +591,6 @@ class OTPBotController:
             return False
 
     def _init_telegram_bot(self):
-        """Initialize Telegram bot with error handling"""
         try:
             token = os.environ.get("TELEGRAM_BOT_TOKEN")
             group_id = os.environ.get("TELEGRAM_GROUP_ID")
@@ -521,11 +608,9 @@ class OTPBotController:
             return False
 
     def start_monitoring(self):
-        """Start OTP monitoring in background thread with proper validation"""
         if self.is_running:
             return "Monitoring is already running"
         
-        # Check if components are properly initialized
         if not self.scraper:
             logger.error("IVASMS scraper not initialized. Please check your credentials.")
             return "Error: IVASMS scraper not initialized. Please check your IVASMS_EMAIL and IVASMS_PASSWORD environment variables."
@@ -547,27 +632,21 @@ class OTPBotController:
             return f"Error starting monitoring: {str(e)}"
 
     def stop_monitoring(self):
-        """Stop OTP monitoring"""
         self.is_running = False
         logger.info("OTP monitoring stopped")
         return "OTP monitoring stopped"
 
     def _monitor_loop(self):
-        """Main monitoring loop"""
         while self.is_running:
             try:
-                # Fetch messages from IVASMS
                 messages = self.scraper.fetch_messages()
                 
                 if messages:
-                    # Filter new OTPs
                     new_otps = self.otp_filter.filter_new_otps(messages)
                     
                     if new_otps:
-                        # Log OTPs to database
                         self._log_otps_to_db(new_otps)
                         
-                        # Send to Telegram
                         if len(new_otps) == 1:
                             asyncio.run(self.telegram_bot.send_otp_message(new_otps[0]))
                         else:
@@ -575,18 +654,14 @@ class OTPBotController:
                         
                         logger.info(f"Sent {len(new_otps)} new OTPs to Telegram")
                 
-                # Update statistics
                 self._update_stats()
-                
-                # Wait before next check
-                time.sleep(30)  # Check every 30 seconds
+                time.sleep(30)
                 
             except Exception as e:
                 logger.error(f"Error in monitoring loop: {e}")
-                time.sleep(60)  # Wait longer on error
+                time.sleep(60)
 
     def _log_otps_to_db(self, otp_list):
-        """Log OTPs to database"""
         try:
             with app.app_context():
                 for otp_data in otp_list:
@@ -604,10 +679,8 @@ class OTPBotController:
             logger.error(f"Error logging OTPs to database: {e}")
 
     def _update_stats(self):
-        """Update bot statistics"""
         try:
             with app.app_context():
-                # Update last check time
                 last_check_stat = db.session.query(BotStats).filter_by(stat_name='last_check').first()
                 if last_check_stat:
                     last_check_stat.stat_value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -624,7 +697,6 @@ class OTPBotController:
             logger.error(f"Error updating statistics: {e}")
 
     def get_stats(self):
-        """Get bot statistics"""
         try:
             with app.app_context():
                 total_otps = db.session.query(OTPLog).count()
@@ -651,13 +723,11 @@ class OTPBotController:
             return {}
 
     async def send_test_message(self):
-        """Send test message through Telegram bot"""
         if not self.telegram_bot:
             return False
         return await self.telegram_bot.send_test_message()
 
     def check_for_otps_manually(self):
-        """Manually check for new OTPs with detailed status reporting"""
         try:
             if not self.scraper:
                 logger.warning("Manual check requested but scraper not initialized")
@@ -691,25 +761,45 @@ class OTPBotController:
             logger.error(f"Error in manual OTP check: {e}")
             return f"❌ Error checking for OTPs: {str(e)}"
 
-# ================================
-# GLOBAL BOT INSTANCE
-# ================================
-
-# This will be initialized after database setup
 bot_controller = None
 
-# ================================
-# FLASK ROUTES
-# ================================
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        email = request.form.get('email', '')
+        password = request.form.get('password', '')
+        
+        if email == DASHBOARD_EMAIL and password == DASHBOARD_PASSWORD:
+            session['logged_in'] = True
+            session['user_email'] = email
+            return redirect(url_for('dashboard'))
+        else:
+            error = 'Invalid email or password'
+    
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 @app.route('/')
+@login_required
 def dashboard():
-    """Main dashboard page"""
     return render_template('dashboard.html')
 
 @app.route('/api/status')
+@login_required
 def api_status():
-    """Get bot status and statistics"""
     if bot_controller is None:
         return jsonify({
             'error': 'Bot controller not initialized',
@@ -725,8 +815,8 @@ def api_status():
     return jsonify(stats)
 
 @app.route('/api/start', methods=['POST'])
+@login_required
 def api_start():
-    """Start OTP monitoring"""
     if bot_controller is None:
         return jsonify({'message': 'Bot controller not initialized', 'success': False})
     
@@ -735,8 +825,8 @@ def api_start():
     return jsonify({'message': result, 'success': success})
 
 @app.route('/api/stop', methods=['POST'])
+@login_required
 def api_stop():
-    """Stop OTP monitoring"""
     if bot_controller is None:
         return jsonify({'message': 'Bot controller not initialized', 'success': False})
     
@@ -744,8 +834,8 @@ def api_stop():
     return jsonify({'message': result, 'success': True})
 
 @app.route('/api/test', methods=['POST'])
+@login_required
 def api_test():
-    """Send test message"""
     if bot_controller is None:
         return jsonify({'message': 'Bot controller not initialized', 'success': False})
     
@@ -759,8 +849,8 @@ def api_test():
         return jsonify({'message': f'Error: {str(e)}', 'success': False})
 
 @app.route('/api/check', methods=['POST'])
+@login_required
 def api_check():
-    """Manually check for OTPs"""
     if bot_controller is None:
         return jsonify({'message': 'Bot controller not initialized', 'success': False})
     
@@ -769,8 +859,8 @@ def api_check():
     return jsonify({'message': result, 'success': success})
 
 @app.route('/api/clear-cache', methods=['POST'])
+@login_required
 def api_clear_cache():
-    """Clear OTP cache"""
     if bot_controller is None:
         return jsonify({'message': 'Bot controller not initialized', 'success': False})
     
@@ -778,8 +868,8 @@ def api_clear_cache():
     return jsonify({'message': result, 'success': True})
 
 @app.route('/api/logs')
+@login_required
 def api_logs():
-    """Get recent OTP logs"""
     try:
         logs = db.session.query(OTPLog).order_by(OTPLog.timestamp.desc()).limit(20).all()
         log_data = []
@@ -800,8 +890,8 @@ def api_logs():
         return jsonify({'logs': [], 'success': False, 'error': str(e)})
 
 @app.route('/api/debug')
+@login_required
 def api_debug():
-    """Debug information for troubleshooting"""
     debug_info = {
         'python_version': f"{sys.version}",
         'flask_app_running': True,
@@ -826,11 +916,10 @@ def api_debug():
     
     return jsonify(debug_info)
 
-# ================================
-# APP INITIALIZATION
-# ================================
+@app.route('/health')
+def health():
+    return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
-# Initialize database and bot controller
 bot_controller = None
 
 try:
@@ -840,7 +929,6 @@ try:
 except Exception as e:
     logger.error(f"Database initialization failed: {e}")
 
-# Initialize bot controller after database setup
 try:
     bot_controller = OTPBotController()
     logger.info("Bot controller initialized successfully")
@@ -849,16 +937,14 @@ except Exception as e:
     logger.debug("This might be due to missing environment variables or network issues")
     bot_controller = None
 
-# Auto-start monitoring if credentials are available and bot controller is initialized
 if bot_controller and (os.environ.get("TELEGRAM_BOT_TOKEN") and 
     os.environ.get("TELEGRAM_GROUP_ID") and 
     os.environ.get("IVASMS_EMAIL") and 
     os.environ.get("IVASMS_PASSWORD")):
     
-    # Start monitoring in a separate thread after a short delay
     def delayed_start():
         try:
-            time.sleep(5)  # Wait 5 seconds for app to fully initialize
+            time.sleep(5)
             result = bot_controller.start_monitoring()
             logger.info(f"Auto-start result: {result}")
         except Exception as e:
@@ -872,4 +958,4 @@ else:
         logger.error("Bot controller is None - check initialization errors above")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)

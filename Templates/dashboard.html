@@ -1,186 +1,540 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram OTP Bot Dashboard</title>
+    <title>Dashboard - 𝐌ʀ 𝐀ғʀɪx 𝐓ᴇᴄʜ™</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            background-color: #1a1a1a;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 50%, #0d1b2a 100%);
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background: rgba(13, 27, 42, 0.95) !important;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 15px 0;
+        }
+        
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .brand-logo {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+        
+        .brand-logo i {
+            font-size: 24px;
+            color: white;
+        }
+        
+        .brand-text {
+            color: #ffffff !important;
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            padding: 8px 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.3);
+            color: #fff;
+        }
+        
+        .main-content {
+            padding: 30px 0;
+        }
+        
+        .page-header {
+            margin-bottom: 30px;
+        }
+        
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        
+        .page-subtitle {
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .stat-card {
+            background: rgba(13, 27, 42, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            height: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 10px 40px rgba(59, 130, 246, 0.1);
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        
+        .stat-icon.success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+        
+        .stat-icon.info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+        
+        .stat-icon.warning {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+        }
+        
+        .stat-icon.secondary {
+            background: rgba(148, 163, 184, 0.2);
+            color: #94a3b8;
+        }
+        
+        .stat-label {
+            color: #64748b;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
             color: #ffffff;
         }
-        .status-card {
-            transition: transform 0.2s;
-            background-color: #2d2d2d;
-            border: 1px solid #404040;
+        
+        .stat-value.small {
+            font-size: 18px;
         }
-        .status-card:hover {
-            transform: translateY(-2px);
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
         }
-        .metric-value {
-            font-size: 2rem;
-            font-weight: bold;
+        
+        .status-badge.online {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
         }
-        .status-indicator {
-            width: 12px;
-            height: 12px;
+        
+        .status-badge.offline {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-        .status-online {
-            background-color: #28a745;
             animation: pulse 2s infinite;
         }
-        .status-offline {
-            background-color: #dc3545;
+        
+        .pulse-dot.online {
+            background: #22c55e;
         }
+        
+        .pulse-dot.offline {
+            background: #ef4444;
+        }
+        
         @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
         }
-        .action-button {
-            margin: 0.25rem;
+        
+        .card {
+            background: rgba(13, 27, 42, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            overflow: hidden;
         }
+        
+        .card-header {
+            background: rgba(30, 41, 59, 0.5);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+            padding: 20px 24px;
+        }
+        
+        .card-title {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title i {
+            color: #3b82f6;
+        }
+        
+        .card-body {
+            padding: 24px;
+        }
+        
+        .btn-action {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary-custom {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+        }
+        
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            color: white;
+        }
+        
+        .btn-success-custom {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+        }
+        
+        .btn-success-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+            color: white;
+        }
+        
+        .btn-danger-custom {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        
+        .btn-danger-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+            color: white;
+        }
+        
+        .btn-warning-custom {
+            background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+            color: white;
+        }
+        
+        .btn-warning-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(234, 179, 8, 0.4);
+            color: white;
+        }
+        
+        .btn-info-custom {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+        }
+        
+        .btn-info-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+            color: white;
+        }
+        
+        .table {
+            color: #e2e8f0;
+        }
+        
+        .table thead th {
+            background: rgba(30, 41, 59, 0.5);
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+            padding: 16px;
+        }
+        
+        .table tbody td {
+            border-color: rgba(59, 130, 246, 0.1);
+            padding: 16px;
+            vertical-align: middle;
+        }
+        
+        .table tbody tr:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+        
+        .otp-code {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+        
+        .badge-sent {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-pending {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
         .log-container {
             max-height: 300px;
             overflow-y: auto;
-            background-color: #1e1e1e;
-            border: 1px solid #404040;
-            border-radius: 0.375rem;
-            padding: 1rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            border-radius: 12px;
+            padding: 16px;
             font-family: 'Courier New', monospace;
-            font-size: 0.875rem;
+            font-size: 13px;
         }
-        .card {
-            background-color: #2d2d2d;
-            border: 1px solid #404040;
+        
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+            color: #94a3b8;
         }
-        .card-header {
-            background-color: #343434;
-            border-bottom: 1px solid #404040;
+        
+        .log-entry:last-child {
+            border-bottom: none;
         }
-        .table-dark {
-            --bs-table-bg: #2d2d2d;
+        
+        .alert-custom {
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        .alert-success {
-            background-color: #1f5132;
-            border-color: #28a745;
-            color: #75b798;
+        
+        .alert-success-custom {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
         }
-        .alert-danger {
-            background-color: #58151c;
-            border-color: #dc3545;
-            color: #f1919a;
+        
+        .alert-danger-custom {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
         }
-        .alert-info {
-            background-color: #055160;
-            border-color: #17a2b8;
-            color: #86cfda;
+        
+        .alert-info-custom {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+        
+        .info-card {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .info-label {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 15px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px 0;
+            color: #475569;
+            font-size: 14px;
+        }
+        
+        .footer strong {
+            color: #3b82f6;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.7);
         }
     </style>
 </head>
 <body>
-    <div class="container py-4">
-        <!-- Header -->
-        <div class="row mb-4">
-            <div class="col">
-                <h1 class="h2 mb-1">
-                    <i class="fas fa-robot text-primary me-2"></i>
-                    Telegram OTP Bot Dashboard
-                </h1>
-                <p class="text-muted">Monitor and control your IVASMS OTP forwarding bot</p>
-            </div>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <div class="brand-logo">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <span class="brand-text">𝐌ʀ 𝐀ғʀɪx 𝐓ᴇᴄʜ™</span>
+            </a>
+            <a href="/logout" class="btn btn-logout">
+                <i class="fas fa-sign-out-alt me-2"></i>Logout
+            </a>
         </div>
-
-        <!-- Alert Area -->
-        <div id="alertArea"></div>
-
-        <!-- Status Cards -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card status-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-circle-check text-success fa-2x mb-2"></i>
-                        <h6 class="card-title">Bot Status</h6>
+    </nav>
+    
+    <div class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-tachometer-alt me-2"></i>OTP Bot Dashboard
+                </h1>
+                <p class="page-subtitle">Monitor and control your IVASMS OTP forwarding bot</p>
+            </div>
+            
+            <div id="alertArea"></div>
+            
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon success">
+                            <i class="fas fa-circle-check fa-lg"></i>
+                        </div>
+                        <div class="stat-label">Bot Status</div>
                         <div id="botStatus">
-                            <span class="status-indicator status-offline"></span>
-                            <span class="text-danger">Offline</span>
+                            <span class="status-badge offline">
+                                <span class="pulse-dot offline"></span>
+                                Offline
+                            </span>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card status-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-clock text-info fa-2x mb-2"></i>
-                        <h6 class="card-title">Uptime</h6>
-                        <div class="metric-value text-info" id="uptime">--</div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon info">
+                            <i class="fas fa-clock fa-lg"></i>
+                        </div>
+                        <div class="stat-label">Uptime</div>
+                        <div class="stat-value small" id="uptime">--</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon warning">
+                            <i class="fas fa-paper-plane fa-lg"></i>
+                        </div>
+                        <div class="stat-label">OTPs Sent</div>
+                        <div class="stat-value" id="otpsSent">0</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon secondary">
+                            <i class="fas fa-database fa-lg"></i>
+                        </div>
+                        <div class="stat-label">OTPs Logged</div>
+                        <div class="stat-value" id="otpsLogged">0</div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card status-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-paper-plane text-warning fa-2x mb-2"></i>
-                        <h6 class="card-title">OTPs Sent</h6>
-                        <div class="metric-value text-warning" id="otpsSent">0</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card status-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-database text-secondary fa-2x mb-2"></i>
-                        <h6 class="card-title">OTPs Logged</h6>
-                        <div class="metric-value text-secondary" id="otpsLogged">0</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Actions Panel -->
-        <div class="row mb-4">
-            <div class="col">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-cogs me-2"></i>
-                            Bot Controls
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-2">
-                            <div class="col-auto">
-                                <button class="btn btn-primary action-button" onclick="checkOTP()">
-                                    <i class="fas fa-search me-1"></i>
+            
+            <div class="row g-4 mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">
+                                <i class="fas fa-cogs"></i>
+                                Bot Controls
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-3">
+                                <button class="btn btn-action btn-primary-custom" onclick="checkOTP()">
+                                    <i class="fas fa-search"></i>
                                     Check for OTPs
                                 </button>
-                            </div>
-                            <div class="col-auto">
-                                <button class="btn btn-info action-button" onclick="sendTestMessage()">
-                                    <i class="fas fa-vial me-1"></i>
+                                <button class="btn btn-action btn-info-custom" onclick="sendTestMessage()">
+                                    <i class="fas fa-vial"></i>
                                     Send Test Message
                                 </button>
-                            </div>
-                            <div class="col-auto">
-                                <button class="btn btn-warning action-button" onclick="clearCache()">
-                                    <i class="fas fa-trash me-1"></i>
+                                <button class="btn btn-action btn-warning-custom" onclick="clearCache()">
+                                    <i class="fas fa-trash"></i>
                                     Clear Cache
                                 </button>
-                            </div>
-                            <div class="col-auto">
-                                <button class="btn btn-success action-button" onclick="startMonitor()">
-                                    <i class="fas fa-play me-1"></i>
+                                <button class="btn btn-action btn-success-custom" onclick="startMonitor()">
+                                    <i class="fas fa-play"></i>
                                     Start Monitor
                                 </button>
-                            </div>
-                            <div class="col-auto">
-                                <button class="btn btn-danger action-button" onclick="stopMonitor()">
-                                    <i class="fas fa-stop me-1"></i>
+                                <button class="btn btn-action btn-danger-custom" onclick="stopMonitor()">
+                                    <i class="fas fa-stop"></i>
                                     Stop Monitor
                                 </button>
                             </div>
@@ -188,146 +542,132 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Statistics Panel -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-chart-line me-2"></i>
-                            Statistics
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <div class="text-center">
-                                    <div class="text-muted small">Last Check</div>
-                                    <div class="fw-bold" id="lastCheck">Never</div>
+            
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title">
+                                <i class="fas fa-chart-line"></i>
+                                Statistics
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="info-card">
+                                        <div class="info-label">Last Check</div>
+                                        <div class="info-value" id="lastCheck">Never</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="text-center">
-                                    <div class="text-muted small">Monitor Status</div>
-                                    <div class="fw-bold" id="monitorStatus">
-                                        <span class="badge bg-secondary">Stopped</span>
+                                <div class="col-6">
+                                    <div class="info-card">
+                                        <div class="info-label">Monitor Status</div>
+                                        <div class="info-value" id="monitorStatus">
+                                            <span class="badge-pending">Stopped</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            System Status
-                        </h5>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title">
+                                <i class="fas fa-server"></i>
+                                System Status
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="systemStatus" class="info-card">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-spinner fa-spin text-warning"></i>
+                                    <span class="text-warning">Checking system status...</span>
+                                </div>
+                            </div>
+                            <div class="info-label mt-3">Last Updated: <span id="lastUpdated">--</span></div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div id="systemStatus">
-                            <div class="text-warning">
-                                <i class="fas fa-exclamation-circle me-2"></i>
-                                Checking system status...
+                </div>
+            </div>
+            
+            <div class="row g-4 mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title">
+                                <i class="fas fa-key"></i>
+                                Recent OTP Logs
+                            </h5>
+                            <button class="btn btn-action btn-primary-custom btn-sm" onclick="refreshOTPLogs()">
+                                <i class="fas fa-refresh"></i>
+                                Refresh
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>OTP Code</th>
+                                            <th>Service</th>
+                                            <th>Phone</th>
+                                            <th>Time</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="otpLogsTable">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted">Loading OTP logs...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        <div class="mt-2">
-                            <small class="text-muted">Last updated: <span id="lastUpdated">--</span></small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title">
+                                <i class="fas fa-list"></i>
+                                Activity Log
+                            </h5>
+                            <button class="btn btn-action btn-warning-custom btn-sm" onclick="clearLog()">
+                                <i class="fas fa-eraser"></i>
+                                Clear
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="activityLog" class="log-container">
+                                <div class="log-entry text-muted">Waiting for activity...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Recent OTP Logs -->
-        <div class="row mb-4">
-            <div class="col">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-key me-2"></i>
-                            Recent OTP Logs
-                        </h5>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="refreshOTPLogs()">
-                            <i class="fas fa-refresh me-1"></i>
-                            Refresh
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-dark table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>OTP Code</th>
-                                        <th>Service</th>
-                                        <th>Phone</th>
-                                        <th>Time</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="otpLogsTable">
-                                    <tr>
-                                        <td colspan="5" class="text-muted text-center">Loading OTP logs...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Activity Log -->
-        <div class="row">
-            <div class="col">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-list me-2"></i>
-                            Activity Log
-                        </h5>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="clearLog()">
-                            <i class="fas fa-eraser me-1"></i>
-                            Clear Log
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div id="activityLog" class="log-container">
-                            <div class="text-muted">Waiting for activity...</div>
-                        </div>
-                    </div>
-                </div>
+            
+            <div class="footer">
+                Powered by <strong>𝐌ʀ 𝐀ғʀɪx 𝐓ᴇᴄʜ™</strong>
             </div>
         </div>
     </div>
-
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Global variables
         let logEntries = [];
         let isLoading = false;
-
-        // Utility functions
-        function formatUptime(seconds) {
-            const days = Math.floor(seconds / 86400);
-            const hours = Math.floor((seconds % 86400) / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            
-            if (days > 0) return `${days}d ${hours}h`;
-            if (hours > 0) return `${hours}h ${minutes}m`;
-            return `${minutes}m`;
-        }
 
         function addLogEntry(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
             const entry = `[${timestamp}] ${message}`;
             logEntries.unshift(entry);
             
-            // Keep only last 50 entries
             if (logEntries.length > 50) {
                 logEntries = logEntries.slice(0, 50);
             }
@@ -338,21 +678,24 @@
         function updateActivityLog() {
             const logContainer = document.getElementById('activityLog');
             if (logEntries.length === 0) {
-                logContainer.innerHTML = '<div class="text-muted">Waiting for activity...</div>';
+                logContainer.innerHTML = '<div class="log-entry text-muted">Waiting for activity...</div>';
             } else {
                 logContainer.innerHTML = logEntries.map(entry => 
-                    `<div class="mb-1">${entry}</div>`
+                    `<div class="log-entry">${entry}</div>`
                 ).join('');
             }
         }
 
         function showAlert(message, type = 'info') {
             const alertArea = document.getElementById('alertArea');
-            const alertClass = type === 'success' ? 'alert-success' : 
-                              type === 'error' ? 'alert-danger' : 'alert-info';
+            const alertClass = type === 'success' ? 'alert-success-custom' : 
+                              type === 'error' ? 'alert-danger-custom' : 'alert-info-custom';
+            const icon = type === 'success' ? 'check-circle' : 
+                        type === 'error' ? 'exclamation-circle' : 'info-circle';
             
             const alert = `
-                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                <div class="alert alert-custom ${alertClass} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-${icon}"></i>
                     ${message}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
@@ -360,7 +703,6 @@
             
             alertArea.innerHTML = alert;
             
-            // Auto-dismiss after 5 seconds
             setTimeout(() => {
                 const alertElement = alertArea.querySelector('.alert');
                 if (alertElement) {
@@ -370,7 +712,6 @@
             }, 5000);
         }
 
-        // API functions
         async function apiCall(endpoint, method = 'GET') {
             try {
                 const response = await fetch(`/api/${endpoint}`, {
@@ -387,7 +728,6 @@
             }
         }
 
-        // Bot control functions
         async function startMonitor() {
             if (isLoading) return;
             isLoading = true;
@@ -397,10 +737,10 @@
             
             if (result.success) {
                 showAlert(result.message, 'success');
-                addLogEntry('✅ OTP monitoring started');
+                addLogEntry('OTP monitoring started');
             } else {
                 showAlert(result.message, 'error');
-                addLogEntry('❌ Failed to start monitoring');
+                addLogEntry('Failed to start monitoring');
             }
             
             isLoading = false;
@@ -416,10 +756,10 @@
             
             if (result.success) {
                 showAlert(result.message, 'success');
-                addLogEntry('⏹️ OTP monitoring stopped');
+                addLogEntry('OTP monitoring stopped');
             } else {
                 showAlert(result.message, 'error');
-                addLogEntry('❌ Failed to stop monitoring');
+                addLogEntry('Failed to stop monitoring');
             }
             
             isLoading = false;
@@ -435,10 +775,10 @@
             
             if (result.success) {
                 showAlert(result.message, 'success');
-                addLogEntry('🧪 Test message sent successfully');
+                addLogEntry('Test message sent successfully');
             } else {
                 showAlert(result.message, 'error');
-                addLogEntry('❌ Failed to send test message');
+                addLogEntry('Failed to send test message');
             }
             
             isLoading = false;
@@ -453,10 +793,10 @@
             
             if (result.success) {
                 showAlert(result.message, 'info');
-                addLogEntry(`🔍 ${result.message}`);
+                addLogEntry(result.message);
             } else {
                 showAlert(result.message, 'error');
-                addLogEntry('❌ Failed to check for OTPs');
+                addLogEntry('Failed to check for OTPs');
             }
             
             isLoading = false;
@@ -472,10 +812,10 @@
             
             if (result.success) {
                 showAlert(result.message, 'success');
-                addLogEntry('🗑️ OTP cache cleared');
+                addLogEntry('OTP cache cleared');
             } else {
                 showAlert(result.message, 'error');
-                addLogEntry('❌ Failed to clear cache');
+                addLogEntry('Failed to clear cache');
             }
             
             isLoading = false;
@@ -487,50 +827,50 @@
             addLogEntry('Activity log cleared');
         }
 
-        // Status update functions
         async function updateStatus() {
             try {
                 const status = await apiCall('status');
                 
                 if (status) {
-                    // Update status indicators
                     const botStatusElement = document.getElementById('botStatus');
                     if (status.is_running) {
                         botStatusElement.innerHTML = `
-                            <span class="status-indicator status-online"></span>
-                            <span class="text-success">Online</span>
+                            <span class="status-badge online">
+                                <span class="pulse-dot online"></span>
+                                Online
+                            </span>
                         `;
                         document.getElementById('monitorStatus').innerHTML = 
-                            '<span class="badge bg-success">Running</span>';
+                            '<span class="badge-sent">Running</span>';
                     } else {
                         botStatusElement.innerHTML = `
-                            <span class="status-indicator status-offline"></span>
-                            <span class="text-danger">Offline</span>
+                            <span class="status-badge offline">
+                                <span class="pulse-dot offline"></span>
+                                Offline
+                            </span>
                         `;
                         document.getElementById('monitorStatus').innerHTML = 
-                            '<span class="badge bg-secondary">Stopped</span>';
+                            '<span class="badge-pending">Stopped</span>';
                     }
                     
-                    // Update metrics
                     document.getElementById('uptime').textContent = status.uptime || '--';
                     document.getElementById('otpsSent').textContent = status.total_otps_sent || 0;
                     document.getElementById('otpsLogged').textContent = status.total_otps_logged || 0;
                     document.getElementById('lastCheck').textContent = status.last_check || 'Never';
                     
-                    // Update system status
                     const systemStatus = document.getElementById('systemStatus');
                     if (status.is_running) {
                         systemStatus.innerHTML = `
-                            <div class="text-success">
-                                <i class="fas fa-check-circle me-2"></i>
-                                All systems operational
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-check-circle text-success"></i>
+                                <span class="text-success">All systems operational</span>
                             </div>
                         `;
                     } else {
                         systemStatus.innerHTML = `
-                            <div class="text-warning">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                Monitoring stopped
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                                <span class="text-warning">Monitoring stopped</span>
                             </div>
                         `;
                     }
@@ -550,14 +890,14 @@
                 if (result.success && result.logs.length > 0) {
                     tableBody.innerHTML = result.logs.map(log => `
                         <tr>
-                            <td><code>${log.otp_code}</code></td>
+                            <td><span class="otp-code">${log.otp_code}</span></td>
                             <td>${log.service_name || 'Unknown'}</td>
                             <td><code>${log.phone_number || 'N/A'}</code></td>
                             <td><small>${log.timestamp}</small></td>
                             <td>
                                 ${log.sent_to_telegram ? 
-                                    '<span class="badge bg-success">Sent</span>' : 
-                                    '<span class="badge bg-warning">Pending</span>'
+                                    '<span class="badge-sent">Sent</span>' : 
+                                    '<span class="badge-pending">Pending</span>'
                                 }
                             </td>
                         </tr>
@@ -565,7 +905,7 @@
                 } else {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="5" class="text-muted text-center">
+                            <td colspan="5" class="text-center text-muted">
                                 ${result.success ? 'No OTP logs found' : 'Failed to load logs'}
                             </td>
                         </tr>
@@ -573,27 +913,18 @@
                 }
             } catch (error) {
                 console.error('Failed to refresh OTP logs:', error);
-                document.getElementById('otpLogsTable').innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-danger text-center">Error loading logs</td>
-                    </tr>
-                `;
             }
         }
 
-        // Initialize dashboard
-        function initDashboard() {
-            addLogEntry('Dashboard initialized');
+        document.addEventListener('DOMContentLoaded', function() {
             updateStatus();
             refreshOTPLogs();
             
-            // Set up periodic updates
-            setInterval(updateStatus, 10000); // Update every 10 seconds
-            setInterval(refreshOTPLogs, 30000); // Refresh logs every 30 seconds
-        }
-
-        // Start dashboard when page loads
-        document.addEventListener('DOMContentLoaded', initDashboard);
+            setInterval(updateStatus, 10000);
+            setInterval(refreshOTPLogs, 30000);
+            
+            addLogEntry('Dashboard loaded successfully');
+        });
     </script>
 </body>
 </html>
