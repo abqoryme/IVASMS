@@ -1,9 +1,8 @@
 services:
   - type: web
     name: ivasms-bot
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python index.py
+    env: docker
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
@@ -18,3 +17,5 @@ services:
       - key: CHAT_ID
         sync: false
     healthCheckPath: /
+    healthCheckInterval: 60
+    healthCheckTimeout: 30
