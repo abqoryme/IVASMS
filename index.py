@@ -36,7 +36,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-ADMIN_IDS = [7500869913, 6524840104]
+ADMIN_IDS = [5238815870]
 bot_users = set()
 
 class HealthHandler(BaseHTTPRequestHandler):
@@ -69,16 +69,16 @@ BANNER_URL = "https://files.catbox.moe/koc535.jpg"
 def get_inline_keyboard():
     """Return inline keyboard with channel/group buttons - vertical layout."""
     keyboard = [
-        [InlineKeyboardButton("𝐍ᴜᴍʙᴇʀ 𝐂ʜᴀɴɴᴇʟ", url="https://t.me/mrafrixtech")],
-        [InlineKeyboardButton("𝐎ᴛᴘ 𝐆𝐫𝐨𝐮𝐩", url="https://t.me/afrixotpgc")],
-        [InlineKeyboardButton("𝐑ᴇɴᴛ sᴄʀɪᴘᴛ", url="https://t.me/jaden_afrix")],
+        [InlineKeyboardButton("𝐍ᴜᴍʙᴇʀ 𝐂ʜᴀɴɴᴇʟ", url="https://t.me/nightghost3")],
+        [InlineKeyboardButton("𝐎ᴛᴘ 𝐆𝐫𝐨𝐮𝐩", url="https://t.me/+eipnpEVyhXFlYmI1")],
+        [InlineKeyboardButton("Owner", url="https://t.me/Suggoikawai")],
     ]
     return InlineKeyboardMarkup(keyboard)
 
 def get_powered_by_caption():
     """Return the powered by caption with auto-updated year."""
     current_year = datetime.now().year
-    return f"©ᴘᴏᴡᴇʀᴇᴅ ʙʏ 𝐀ᴜʀᴏʀᴀ𝐈ɪɴᴄ {current_year}"
+    return f"©ᴘᴏᴡᴇʀᴇᴅ {current_year}"
 
 def is_admin(user_id):
     return user_id in ADMIN_IDS
